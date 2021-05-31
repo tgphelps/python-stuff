@@ -1,0 +1,9 @@
+strategy data/basic-all-double.txt
+rounds_played 20000000
+hands_played 100000000
+total_bet 219900434
+total_won 101792184
+total_lost 104278914
+dealer_bjs 948158
+player_bjs 4748882
+%win: -1.131

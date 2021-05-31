@@ -1,0 +1,9 @@
+strategy data/basic-hit-only.txt
+rounds_played 20000000
+hands_played 100000000
+total_bet 200000000
+total_won 90993906
+total_lost 96281196
+dealer_bjs 948503
+player_bjs 4744576
+%win: -2.644

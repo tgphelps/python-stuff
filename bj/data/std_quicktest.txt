@@ -1,0 +1,11 @@
+time Thu May 23 11:01:47 2019
+strategy data/basic-hit-only.txt
+rounds_played 200000
+hands_played 1000000
+total_bet 2000000
+total_won 909449
+total_lost 962666
+dealer_bjs 9572
+player_bjs 47402
+%win: -2.661
+--------------------

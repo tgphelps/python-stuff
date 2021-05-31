@@ -1,0 +1,22 @@
+
+CLI programs:
+    dump_udp.py - dump UDP header and data
+    dump_tcp.py - dump TCP header and data
+    dump_ip.py  - dump IP header and data
+    dump_pkt.py - dump entire packet
+
+or one program:
+    dump [udp|tcp|ip|pkt] FILE ...
+
+Options:
+    -n --num <num-range>
+
+    -f --from-host <ip>
+    -t --to-host <ip>
+
+    -s --src-port <num>
+    -d --dest-port <num>
+    -p --protocol <num>
+    -e --ethertype <num>
+    -f --format <hex/ascii/both>
+    -v --verbose

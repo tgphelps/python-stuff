@@ -1,0 +1,29 @@
+stmt -> list-stmt 
+      | find-stmt
+      | use-stmt 
+      | set-stmt 
+      | restore-stmt
+      | info-stmt
+      | help-stmt
+
+list-stmt -> LIST BACKUPS
+           | LIST FILES
+           | LIST STRING
+
+find-stmt -> FIND STRING
+
+use-stmt -> USE ID
+
+set-stmt -> SET DESTINATION STRING
+
+restore-stmt -> RESTORE STRING from-clause to-clause
+
+from-clause -> FROM ID
+             | empty
+
+to-clause -> TO STRING
+           | empty
+
+info-stmt -> INFO
+
+help-stmt -> HELP

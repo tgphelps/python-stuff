@@ -1,0 +1,58 @@
+
+DPREP notes
+
+disk header - sectors 0-3
+SCF control record - 4-7
+VOL1 - 8-11
+
+version 0 or 1 prep??
+
+Example from SOS:
+drep,r dr1,1000,REM001
+
+From Ward:
+Both SOS and ROS use 512-byte blocks to store every 4 sectors of information.
+There are no unused bits between words on disk  That leaves 12 unused bytes
+per physical "record" but it is much cleaner from a performance standpoint
+to begin every transfer at an actual block boundary.  It has been pointed
+out to me that Unisys was incredibly fortunate to have designed the original
+"fastrand" format as 28 words of 36 bits per sector because it makes such
+optimal utilization of modern hardware.
+
+Another item of interest is that a real, physical 2200 disk does nothing
+with the first two records.  Perhaps these are reserved for hardware.
+But PS/2200 uses the first record for labeling and identification.
+The second record on a ROS disk is used to save the SCF settings
+(DRS pack only).  The disk format is so compatible in fact that it is
+possible to transfer a ROS VD image to a physical disk and use it on a
+real 2200 system.  At least I think so.
+
+----------
+
+Diskedit commands:
+
+g <sector>
+d <offset> <count>
+fdata
+ascii
+
+go n:
+    get_sector n
+    print 'sector n'
+
+dump offset count:
+    end = offset + count - 1
+    if end <= 28-1:
+        dump_words offset count
+    else:
+        dump_words offset count_to_end
+        while more to dump
+            go sector
+            dump from 0 to end or done
+
+get_sector n:
+    if necessary
+        read_disk n / 4 * 4
+    return index of first word
+
+dump_words start count: (all in one sector)

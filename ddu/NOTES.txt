@@ -1,0 +1,5 @@
+
+TODO: walk2.py assumes we are on Windows
+
+platform.system() returns "Windows" for Windows, "linux" for Linux?
+But sys.platform == "win32" on 64-bit Windows.

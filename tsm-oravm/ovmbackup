@@ -1,0 +1,474 @@
+#!/bin/env python3
+
+"""Backup program for Oracle VM virtual machines.
+
+   usage: ovmbackup [-h] [--local] [--borg] [--only ONLY] [--duration DURATION]
+                 [--maxsize MAXSIZE] [--schedule SCHEDULE]
+
+   optional arguments:
+     -h, --help            show this help message and exit
+     --local, -l           do local backups
+     --borg, -b            do borg backups
+     --only ONLY, -o ONLY  backup only these VMs
+     --duration DURATION, -d DURATION
+                           max mins duration of job
+     --maxsize MAXSIZE, -m MAXSIZE
+                           max GB of job
+     --schedule SCHEDULE, -s SCHEDULE
+                           backup schedule to run
+   """
+
+import argparse
+import logging
+import sys
+import time
+
+import borg
+import config
+import work_queue
+import util
+
+
+# ----- GLOBAL DATA -----
+
+class globals:
+    pass
+
+g = globals()
+g.only_these = []
+# g.disk = 0
+g.local = False
+g.borg = False
+
+g.schedule = ''
+
+g.max_duration = 0
+g.total_duration = 0
+
+g.max_megabytes = 0
+g.total_megabytes = 0
+g.backup = None
+# start_time is seconds after The Epoch
+g.start_time = time.mktime(time.localtime())
+
+
+# ----- FUNCTIONS -----
+
+
+def parse_commandline():
+    "Parse command line and set global variables."
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--local', '-l', action='store_true',
+                        help='do local backups')
+    parser.add_argument('--borg', '-b', action='store_true',
+                        help='do borg backups')
+    parser.add_argument('--only', '-o',
+                        help='backup only these VMs')
+    parser.add_argument('--duration', '-d', type=int,
+                        help='max mins duration of job')
+    parser.add_argument('--maxsize', '-m', type=int,
+                        help='max GB of job')
+    parser.add_argument('--schedule', '-s', help='backup schedule to run')
+
+    args = parser.parse_args()
+    if args.local:
+        g.local = True
+    if args.borg:
+        g.borg = True
+    if args.only:
+        names = args.only.lower()
+        g.only_these = names.split(',')
+    if args.duration:
+        g.max_duration = args.duration * 60
+    if args.maxsize:
+        g.max_megabytes = args.maxsize * 1024
+    if args.schedule:
+        g.schedule = args.schedule
+
+    if g.local and g.borg:
+        util.perror('ERROR: --local and --borg both specified')
+        sys.exit(1)
+
+    if 0:
+        print('Option summary:')
+        print('only_these =',g.only_these)
+        print('duration =', g.max_duration)
+        print('maxsize=', g.max_megabytes)
+
+
+
+# Should we return a status and not crash, if an invalid name is found?
+
+def verify_vm_names(vm_list):
+    "Verify that the VM list contains only valid VMs."
+
+    for vm1 in vm_list:
+        okay = 0
+        for vm2 in config.cfg_vm_list:
+            if vm1 == vm2.name:
+                logging.info('VM ' + vm1 + ' is valid')
+                if g.borg and vm2.retain == 0:
+                    msg = 'VM {} does not get borg backups. Exiting.'.format(vm1)
+                    logging.info(msg)
+                    util.perror(msg)
+                    sys.exit(1)
+                okay = 1
+                break
+        if not okay:
+            msg = 'VM {} is invalid. Exiting'.format(vm1)
+            logging.info(msg)
+            util.perror(msg)
+            sys.exit(1)
+
+
+
+def find_string(s, lines):
+    "Search the array 'lines' for a line that starts with 's'."
+    for l in lines:
+        if l.startswith(s):
+            return True
+    return False
+
+
+# BUG?: I think it IS an error if there's no 'bytes transferred' line,
+# but the error will be caught elsewhere, so I'm not going to try to fix it.
+
+def get_backup_size(lines):
+    """Search the array 'lines' for the number of bytes just backed up.
+
+       Return an int, which specifies the numbers of MEGS transferred.
+       Return ZERO if we can't find a valid backups size.
+       This function is used only for TSM backups.
+    """
+    total_size = 0
+
+    # Search lines[] for the 'bytes transferred' line, and parse it
+    for l in lines:
+        if l.startswith('Total number of bytes transferred'):
+            f = l.split()
+            units = f[-1]
+            size = float(f[-2])
+            if units == 'MB':
+                total_size += int(size)
+            elif units == 'GB':
+                total_size += int(size * 1024.0)
+            else:
+                logging.warning('Byte units not MB or GB: ' + units)
+                return 0
+
+    if total_size == 0:
+        logging.warning("No 'bytes transferred' line found")
+
+    return total_size
+
+
+
+def all_backups_okay(lines):
+    """Verify that all attempted backups succeeded.
+
+       This is only for TSM backups. There should be an equal number of
+       lines that say 'we started' and 'we finished successfully'.
+    """
+    inspected = 0
+    backed_up = 0
+
+    for l in lines:
+        if l.startswith("Total number of objects inspected"):
+            f = l.split()
+            inspected += int(f[-1])
+        elif l.startswith("Total number of objects backed up"):
+            f = l.split()
+            backed_up += int(f[-1])
+
+    if inspected == 0:
+        # No backups even attempted? Something is bad.
+        return 0
+
+    if inspected == backed_up:
+        return 1
+    else:
+        return 0
+
+
+def log_success(vm, lines):
+    "Create log entries that show a successful TSM backup."
+
+    msg = 'Backup SUCCESSFUL'
+    print(msg)
+    logging.info(msg)
+
+    for l in lines:
+        if l.startswith('Total number of bytes transferred') or \
+           l.startswith('Total number of bytes inspected') or \
+           l.startswith('Objects compressed by') or \
+           l.startswith('Elapsed processing time'):
+            l = l.rstrip()
+            print(l)
+            logging.info(l)
+
+
+def log_failure(vm, lines):
+    "Create log entries containing the TSM error messages from a backup."
+
+    print('ERRORS found in backup listing')
+    logging.warning('Errors in backup:')
+
+    for line in lines:
+        if line.startswith('AN'):
+            line = line.strip()
+            print(line)
+            logging.warning(line)
+
+
+
+def log_confused(vm, lines):
+    "Create a log entry that says we are confused about what happened."
+
+    print('Cannot determine backup status. Check the listing.')
+    logging.warning('Cannot determine backup status')
+
+
+# Read the listing from the backup that just finished, create log
+# entries for success or failure, and return the backup size
+# (as an integer number of megabytes).
+
+def check_tsm_backup(vm, fname):
+    """Check TSM listing for success or failure messages.
+
+       Read the listing from the backup that just finished, create log
+       entries for success or failure, and return the backup size
+       (as an integer number of megabytes).
+    """
+    with open(fname, 'rt') as f:
+        lines = f.readlines()
+
+    if all_backups_okay(lines):
+        log_success(vm, lines)
+        # Get backup size in megs
+        backup_size = get_backup_size(lines)
+    # Check for lines that looks like TSM error messages
+    elif find_string('AN', lines):
+        log_failure(vm, lines)
+        backup_size = 0
+    else:
+        # We are not sure whether it was good or not
+        log_confused(vm, lines)
+        backup_size = 0
+
+    return backup_size
+
+
+
+def check_local_backup(vm, fname):
+    """Check listing of a local backup.
+
+       Make sure all gzip statuses are 0. Accumulate all backup file sizes.
+       Create log entries for success or failure.
+       Return number of megabytes backed up, or ZERO if there was an error.
+    """
+    megs = 0
+    with open(fname, 'rt') as fp:
+        lines = fp.readlines()
+
+    for line in lines:
+        if line.startswith('GZIP:'):
+            f = line.split()
+            if f[1] != '0':
+                megs = 0
+                break
+        elif line.startswith('RESULT:'):
+            f = line.split()
+            n = int(f[5]) / (1024 * 1024)
+            megs += n
+    if megs > 0:
+        msg = 'Backup SUCCESSFUL'
+        print(msg)
+        logging.info(msg)
+    else:
+        print('ERRORS found in backup listing')
+        logging.warning('Errors in backup. GZIP failed.')
+    return megs
+
+
+
+def build_backup_cmd(vm, disk, bkup_type):
+    "Build the backup command command to execute."
+
+    repos = util.get_repos_for_vm(vm)
+    if bkup_type == 'local':
+        cmd = './local_backup.sh '
+        cmd += '{} {} {} {}'.format(vm, disk, repos.mount, config.cfg_local_dir)
+    elif bkup_type == 'TSM':
+        cmd = '/usr/bin/dsmc i '
+        cmd += '{}/VirtualDisks/{}.CLONE'.format(repos.mount, disk)
+    else:
+        # print('bkup_type =', bkup_type)
+        assert bkup_type == 'borg'
+        assert False
+
+    return cmd
+
+
+
+def backup_vm(vm, bkup_type):
+    """Backup the given VM.
+
+       Update our counters of total time spent and data transferred to TSM,
+       so we can stop backing up if we exceed our backup window.
+    """
+    fname = config.cfg_history + vm + '-' + time.strftime("%Y%m%d-%H%M%S")
+
+    with open(config.cfg_inventory + vm + '/disks',  'rt') as fp:
+        lines = fp.readlines()
+
+    dnames = []
+    for d in lines:
+        f = d.strip().split()
+        dnames.append(f[0])
+
+    if bkup_type == 'borg':
+        # We do all the disks for a VM in one borg archive creation
+        borg.backup_vm(vm, dnames, config, fname)
+    else:
+        # disk_num = 0
+        for disk in dnames:
+            # Not implemented
+            # disk_num += 1
+            # Skip it if we want one specific disk, and this ain't it
+            # if g.disk and (g.disk != disk_num): continue
+
+            cmd = build_backup_cmd(vm, disk, bkup_type)
+            # Note the '>>'. We want all disks in the same listing file.
+            cmd += " >>{} 2>&1".format(fname)
+            # print('CMD =', cmd)
+            print(time.strftime("%Y%m%d-%H%M%S"), \
+                  'Start {} backup of '.format(bkup_type), vm, disk)
+            logging.info('Backup cmd: ' + cmd)
+            cmd_status = util.run_shell_command(cmd)
+            logging.info('Shell cmd status = ' + str(cmd_status))
+
+    print(time.strftime("%Y%m%d-%H%M%S"), 'End backup of', vm)
+    logging.info('Backup complete')
+
+    if bkup_type == 'local':
+        megs_backed_up = check_local_backup(vm, fname)
+    elif bkup_type == 'TSM':
+        megs_backed_up = check_tsm_backup(vm, fname)
+    else:
+        megs_backed_up = borg.check_backup(vm, fname)
+
+    logging.info('Last backup size was ' + str(megs_backed_up))
+    g.total_megabytes += megs_backed_up
+    msg = 'Total backup size is ' + str(g.total_megabytes)
+    print(msg)
+    logging.info(msg)
+
+    now = time.mktime(time.localtime())
+    g.total_duration = now - g.start_time
+    msg = 'Total backup duration so far = ' + str(g.total_duration)
+    print(msg)
+    logging.info(msg)
+
+
+
+# Create a queue of VMs that need backups, sorted into the order
+# we want to actually process them. Then start processing that
+# queue, and keep going until we finish, or exceed our time or
+# data transfer limits.
+# New in 1.1 - Each VM has a 'schedule' associated with it, and each
+# ovmbackup run has an associated schedule. The run backs up a VM only
+# if (1) they have the same schedule, or (2) the VM has schedule 'ANY'
+
+def do_needed_backups(bkup_type):
+    if bkup_type == 'TSM':
+        util.get_tsm_backup_list(active_only=True)
+        g.backup = util.read_backup_list()
+        wq = work_queue.create_tsm_work_queue(g.backup, g.start_time)
+    elif bkup_type == 'local':
+        wq = work_queue.create_local_work_queue(g.start_time)
+    elif bkup_type == 'borg':
+        wq = borg.create_work_queue(config)
+    else:
+        raise
+
+    print('The following backups will be done (if we have time)')
+    print('')
+    if bkup_type == 'TSM':
+        work_queue.print_tsm_work_queue(wq)
+    elif bkup_type == 'local':
+        work_queue.print_local_work_queue(wq)
+    else:
+        borg.print_work_queue(wq)
+
+    print('')
+    # Ready to do any needed backups
+    if len(wq) > 0:
+        logging.info('Work queue:')
+        for vm in wq:
+            logging.info('   ' + vm.name)
+        for vm in wq:
+            if g.total_duration < g.max_duration \
+            and g.total_megabytes < g.max_megabytes \
+            and (vm.schedule == config.DEF_SCHED or vm.schedule == g.schedule):
+                backup_vm(vm.name, bkup_type)
+            else:
+                msg = 'Backup of ' + vm.name + ' SKIPPED. No time or wrong schedule'
+                print(msg)
+                logging.info(msg)
+    else:
+        print('NO backups needed')
+        logging.info('NO backups needed')
+
+
+
+# ----- MAIN PROGRAM -----
+
+
+def main():
+    config.read_config()
+    print('ovmbackup', config.VERSION)
+    g.max_megabytes = config.cfg_max_megabytes
+    g.max_duration = config.cfg_max_duration
+    g.schedule = config.DEF_SCHED
+
+    logging.basicConfig(level=config.cfg_loglevel, filename=config.cfg_logfile,
+                        format='%(asctime)s %(levelname)s %(message)s')
+    logging.debug('START tvmbackup %s', config.VERSION)
+
+    logging.info('ovmbackup version ' + config.VERSION)
+
+    parse_commandline()
+
+
+    if len(g.only_these) > 0:
+        logging.info('Backing up named VMs')
+        verify_vm_names(g.only_these)
+
+        if g.local: bkup_type = 'local'
+        elif g.borg: bkup_type = 'borg'
+        else: bkup_type = 'TSM'
+
+        if bkup_type == 'TSM' and not config.cfg_tsm_enable:
+            util.perror('TSM disabled on this host')
+            sys.exit(1)
+        for vm in g.only_these:
+            backup_vm(vm, bkup_type)
+    else:
+        if g.local:
+            bkup_type = 'local'
+        elif g.borg:
+            bkup_type = 'borg'
+        else:
+            bkup_type = 'TSM'
+
+        if bkup_type == 'TSM' and not config.cfg_tsm_enable:
+            util.perror('TSM disabled on this host')
+            sys.exit(1)
+        logging.info('Performing needed {} backups'.format(bkup_type))
+        do_needed_backups(bkup_type)
+
+
+
+if __name__ == '__main__':
+    main()

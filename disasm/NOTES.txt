@@ -1,0 +1,96 @@
+
+Relocation entries:
+
+
+typedef  struct
+{
+    Elf64_Addr      r_offset;   /*  Address  of  reference  */
+    Elf64_Xword     r_info;     /*  Symbol  index  and  type  of  relocation  */
+}  Elf64_Rel;
+
+typedef  struct
+{
+    Elf64_Addr      r_offset;   /*  Address  of  reference  */
+    Elf64_Xword     r_info;     /*  Symbol  index  and  type  of  relocation  */
+    Elf64_Sxword    r_addend;   /*  Constant  part  of  expression  */
+}  Elf64_Rela;
+
+The different fields in these structures are the following:
+
+    r_offset: This field holds the location where a particular relocation
+              has to take place, however it may have different interpretations
+              depending on ELF object type.
+              For ET_REL type binaries, this value denotes an offset within
+              a section header. in which the relocations have to take place
+              For ET_EXEC type binaries, this value denotes a virtual
+              address affected by a relocation
+
+    r_info:   This field denotes both the symbol index within a symbol
+              table of the correspondent symbol that has to be relocated,
+              as well as the relocation type for that specific symbol.
+              Both of these pieces of information can be retrieved from
+              this field using the following macros:
+                ELF32_R_SYM(info) ((info)>>8)
+                ELF32_R_TYPE(info) ((unsigned char)(info))
+                ELF64_R_SYM(info) ((info)>>32)
+                ELF64_R_TYPE(info) ((Elf64_Word)(info))
+
+    r_addend: This field specifies a constant addend to be added to compute
+              the value to be stored in a given relocation reference.
+
+
+x64 relocation types
+
+Name 	Value 	Field 	Calculation
+R_X86_64_NONE 	0 	None 	None
+R_X86_64_64 	1 	qword 	S + A
+R_X86_64_PC32 	2 	dword 	S + A – P
+R_X86_64_GOT32 	3 	dword 	G + A
+R_X86_64_PLT32 	4 	dword 	L + A – P
+R_X86_64_COPY 	5 	None 	Value is copied directly from shared object
+R_X86_64_GLOB_DAT 	6 	qword 	S
+R_X86_64_JUMP_SLOT 	7 	qword 	S
+R_X86_64_RELATIVE 	8 	qword 	B + A
+R_X86_64_GOTPCREL 	9 	dword 	G + GOT + A – P
+R_X86_64_32 	10 	dword 	S + A
+R_X86_64_32S 	11 	dword 	S + A
+R_X86_64_16 	12 	word 	S + A
+R_X86_64_PC16 	13 	word 	S + A – P
+R_X86_64_8 	14 	word8 	S + A
+R_X86_64_PC8 	15 	word8 	S + A – P
+R_X86_64_PC64 	24 	qword 	S + A – P
+R_X86_64_GOTOFF64 	25 	qword 	S + A – GOT
+R_X86_64_GOTPC32 	26 	dword 	GOT + A – P
+R_X86_64_SIZE32 	32 	dword 	Z + A
+R_X86_64_SIZE64 	33 	qword 	Z + A
+
+
+    A: Addend of Elfxx_Rela entries.
+    B: Image base where the shared object was loaded in process virtual address space.
+    G: Offset to the GOT relative to the address of the correspondent relocation
+    entry’s symbol.
+    GOT: Address of the Global Offset Table
+    L: Section offset or address of the procedure linkage table (PLT, .got.plt).
+    P: The section offset or address of the storage unit being relocated.
+    retrieved via r_offset relocation entry’s field.
+    S: Relocation entry’s correspondent symbol value.
+    Z: Size of Relocations entry’s symbol.
+
+
+Generic relocation suffixes:
+
+    *_NONE: Neglected entry.
+    *_64: qword relocation value.
+    *_32: dword relocation value.
+    *_16: word relocation value.
+    *_8: byte relocation value.
+    *_PC: relative to program counter.
+    *_GOT: relative to GOT.
+    *_PLT: relative to PLT (Procedure Linkage Table).
+    *_COPY: value copied directly from shared object at load-time.
+    *_GLOB_DAT: global variable.
+    *_JMP_SLOT: PLT entry.
+    *_RELATIVE: relative to image base of program’s image.
+    *_GOTOFF: absolute address within GOT.
+    *_GOTPC: program counter relative GOT offset.
+

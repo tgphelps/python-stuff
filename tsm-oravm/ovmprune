@@ -1,0 +1,132 @@
+#!/usr/bin/env python3
+
+"""Prune old Borg backup from the repository, as directed by the config."""
+
+
+import argparse
+import subprocess
+import sys
+
+import borg
+import config
+
+class Globals:
+    pass
+
+g = Globals()
+g.verbose = False
+g.dry_run = False
+g.only_vm = None
+
+
+# ---------- Functions
+
+def main():
+    config.read_config()
+    parse_arguments()
+    # Fetch ALL borg backups
+    backups = borg.get_backups(config.cfg_borg_repos,show_all=True)
+    if g.only_vm:
+        backups = [bkup for bkup in backups if bkup.vm == g.only_vm]
+    # Sort old-to-new for later processing
+    backups.sort(key=lambda bk: bk.date_time)
+    if g.verbose:
+        print('All backups:')
+        for b in backups:
+            print(b)
+    d = group_by_vm(backups)
+    trim_retained_backups(d)
+    delete_old_backups(d)
+
+
+
+def usage():
+    print('usage: ovmprune [--help] [--dry-run] [--verbose] [--only vm]')
+
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--verbose', '-v', action='store_true')
+    parser.add_argument('--dry_run', '-d', action='store_true')
+    parser.add_argument('--only', '-o')
+    args = parser.parse_args()
+    if args.verbose:
+        g.verbose = True
+    if args.dry_run:
+        g.dry_run = True
+    if args.only:
+        g.only_vm = args.only.lower()
+
+
+
+def delete_old_backups(d):
+    """Delete all backups that are in dict 'd'."""
+
+    if g.dry_run:
+        print('DRY RUN. Commands are:')
+    for vm in d:
+        for backup in d[vm]:
+            arg = config.cfg_borg_repos + '::' + backup.name
+            print('borg delete {}::{}'.format( \
+                  config.cfg_borg_repos, backup.name))
+            if not g.dry_run:
+                proc = subprocess.Popen(['borg', 'delete', arg], \
+                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                data = proc.communicate()[0]
+                data = data.decode()
+                print(data)
+
+
+
+def group_by_vm(backups):
+    """Return a dict with vm as key and list of backups as values."""
+
+    d = {}
+    for b in backups:
+        if b.vm not in d:
+            d[b.vm] = []
+        d[b.vm].append(b)
+    if g.verbose:
+        print('Backup dict:')
+        for vm in d:
+            print(vm)
+            for b in d[vm]:
+                print('   ', b)
+
+    return d
+
+
+
+def vm_retention(vm_name):
+    """Return backup retention for this VM"""
+
+    for vm in config.cfg_vm_list:
+        if vm_name == vm.name:
+            return vm.retain
+    assert 0
+
+
+
+def trim_retained_backups(d):
+    """Remove from the dict 'd' backups that we want to keep."""
+
+    for vm in d:
+        retain = vm_retention(vm)
+        # Be careful: If VM has no retention given, retain everything.
+        if retain == 0 or len(d[vm]) <= retain:
+            d[vm] = []
+        else:
+            for i in range(retain):
+                del d[vm][-1]
+    if g.verbose:
+        print('Trimmed dict:')
+        for vm in d:
+            print(vm)
+            for b in d[vm]:
+                print('   ', b)
+
+
+
+if __name__ == '__main__':
+    main()

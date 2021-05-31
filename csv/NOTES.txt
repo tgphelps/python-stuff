@@ -1,0 +1,10 @@
+
+Possible subcommands:
+
+find <str> <file>...
+grep <pattern> <file>...
+columns n1,n2,... <file>...
+
+common options:
+
+--headers

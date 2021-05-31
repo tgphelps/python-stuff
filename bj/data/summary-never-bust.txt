@@ -1,0 +1,9 @@
+strategy data/never-bust.txt
+rounds_played 40000000
+hands_played 200000000
+total_bet 400000000
+total_won 178682354
+total_lost 203955852
+dealer_bjs 1897957
+player_bjs 9493992
+%win: -6.318

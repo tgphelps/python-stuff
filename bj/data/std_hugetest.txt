@@ -1,0 +1,11 @@
+time Fri Nov 15 08:46:43 2019
+strategy data/basic-double-split.txt
+rounds_played 2000000
+hands_played 10000000
+total_bet 22730286
+total_won 10566020
+total_lost 10717200
+total_push 1900224
+blackjacks_won 453158
+%win: -0.6651
+--------------------

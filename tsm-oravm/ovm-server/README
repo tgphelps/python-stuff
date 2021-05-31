@@ -1,0 +1,9 @@
+
+These files should be installed on one of the OVM servers, and
+the script re-create-clones.sh should
+probably placed into crontab, so that disk clones will be regularly
+made.
+
+A typical crontab setup is:
+
+34 09 * * 2,4,6 /root/bin/re-create-clones.sh >/root/clones.lst 2>&1

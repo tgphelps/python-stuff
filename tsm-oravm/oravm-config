@@ -1,0 +1,28 @@
+# Blank lines and comments are ignored
+
+temp dir=/tmp/
+history dir=/home/tgphelps/tsm-oravm/history/
+local dir=/backup/
+borg repos=/home/tgphelps/borg-repos
+# This is to stop accidental TSM backups on the wrong host
+tsm enable=no
+backup duration=60 \
+	maxsize=100
+log file=/home/tgphelps/tsm-oravm/LOG level=DEBUG
+# mail to=tgphelps@acbl.net,someone@else.com
+mail to=tgphelps@acbl.net
+
+inventory dir=/home/tgphelps/tsm-oravm/inventory/
+database file=inventory.db
+
+repos name=prod1 server=oravm1.acbl.net \
+      share=/OVS/Repositories/0004fb000003000041fe53d7dbe06e5f \
+      mount=/repos/prod1
+repos name=test1 server=toravm1.acbl.net \
+      share=/OVS/Repositories/0004fb0000030000b0c56f2943e83509 \
+      mount=/repos/test1
+
+vm name=backup0	pri=10	interval=30 local=2 repos=prod1 retain=1
+vm name=backup1	pri=10	interval=30 local=2 repos=prod1 retain=2
+vm name=backup2	pri=10	interval=30 local=2 repos=prod1 retain=1
+vm name=backup3	pri=10	interval=30 local=2 repos=prod1 retain=1

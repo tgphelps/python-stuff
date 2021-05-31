@@ -1,0 +1,9 @@
+
+Classes we may need:
+
+Card - just an int
+Shoe(num_decks, shuffle_point)
+Hand([card])
+Player(strategy)
+Dealer(rules)
+Game(rules)

@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+
+"""Check some or all archives in the Borg repository for 'extractability'."""
+
+
+import argparse
+import subprocess
+import time
+
+import borg
+import config
+
+class Globals:
+    pass
+
+g = Globals()
+g.verbose = False
+g.dry_run = False
+g.only = None
+
+
+# ---------- Functions
+
+def main():
+    config.read_config()
+    parse_arguments()
+    # Fetch ALL borg backups
+    backups = borg.get_backups(config.cfg_borg_repos,show_all=True)
+    if g.only:
+        backups = [bkup for bkup in backups if g.only in bkup.vm]
+    # Sort new-to-old
+    backups.sort(key=lambda bk: bk.date_time, reverse=True)
+    if g.verbose:
+        print('All backups:')
+        for b in backups:
+            print(b)
+    d = group_by_vm(backups)
+    check_archives(d)
+
+
+
+def usage():
+    print('usage: ovmprune [--help] [--dry-run] [--verbose] [--only vm]')
+
+
+
+def parse_arguments():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--verbose', '-v', action='store_true')
+    parser.add_argument('--dry_run', '-d', action='store_true')
+    parser.add_argument('--only', '-o')
+    args = parser.parse_args()
+    if args.verbose:
+        g.verbose = True
+    if args.dry_run:
+        g.dry_run = True
+    if args.only:
+        g.only = args.only.lower()
+
+
+
+def group_by_vm(backups):
+    """Return a dict with vm as key and list of backups as values."""
+
+    d = {}
+    for b in backups:
+        if b.vm not in d:
+            d[b.vm] = []
+        d[b.vm].append(b)
+    if g.verbose:
+        print('Backup dict:')
+        for vm in d:
+            print(vm)
+            for b in d[vm]:
+                print('   ', b)
+
+    return d
+
+
+
+def check_archives(d):
+    """Check each archive in the dictionary d."""
+
+    if g.dry_run:
+        print("DRY RUN")
+    else:
+        print("TIME: ", time.asctime())
+    for vm in sorted(d):
+        for backup in d[vm]:
+            # print('check:', backup.name)
+            if g.dry_run:
+                print('borg extract --dry-run -v {}::{}'.format(
+                      config.cfg_borg_repos, backup.name))
+            else:
+                archive = config.cfg_borg_repos + '::' + backup.name
+                print("CHECKING", archive)
+                proc = subprocess.run(['borg', 'extract', '--dry-run', '-v', archive])
+                print("RETURN CODE =", proc.returncode)
+                print("TIME:", time.asctime())
+
+
+if __name__ == '__main__':
+    main()

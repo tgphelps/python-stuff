@@ -1,0 +1,59 @@
+
+There is some documentation on the code in this repository at:
+    http://jiplwiki.acbl.net/dokuwiki/doku.php?id=howto:backup_oracle_vm
+
+
+Here is a tree of what calls what, current as of 9/11/2015:
+
+get_inventory.sh
+    getinv.py
+
+backup_vm.sh
+    repos.py
+    ovmbackup
+    ovmlist
+
+getinv.py
+    config.py
+    util.py
+    build_disk_summary.sh
+    copy_configs.py
+    repos.py
+
+ovmbackup
+    config.py
+    log.py
+    util.py
+    work_queue.py
+
+ovmlist
+    config.py
+    util.py
+    work_queue.py
+
+config.py
+    util.py
+
+util.py
+    config.py
+
+build_disk_summary.sh
+    NONE
+
+copy_configs.py
+    config.py
+
+repos.py
+    config.py
+    util.py
+    mount.sh
+    umount.sh
+
+log.py
+    NONE
+
+util.py
+    config.py
+
+work_queue.py
+    config.py

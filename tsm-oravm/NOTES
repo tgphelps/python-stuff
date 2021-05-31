@@ -1,0 +1,24 @@
+
+The git repository for this is in /home/tgphelps/tsm-oravm.
+The make file installs into /root/tsm-oravm
+
+Programs we need:
+	Mount a repository
+	Refresh inventory for a repository
+	Backup some or all VMs
+	List VMs needing backup
+
+All programs will be Python modules, which may call shell scripts.
+
+When we backup a VM, backup its vm.cfg file as well as its disks.
+
+Should we use sqlite3 to store data? Think about it.
+
+The vm.cfg file appears to be legal Python code. Maybe we eval()
+some or all of it.
+
+Must configure TSM for subfile backups. See wiki for notes.
+
+Query for VM disk backups:
+    dsmc query backup '/repos/*/VirtualDisks/*' [ -ina ]
+    dsmc q b '/repos/' -subdir=yes (?)

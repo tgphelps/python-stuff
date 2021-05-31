@@ -1,0 +1,5 @@
+tmp
+trace.txt
+stats.txt
+.mypy_cache
+results.db

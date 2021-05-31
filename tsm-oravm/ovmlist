@@ -1,0 +1,178 @@
+#!/bin/env python3
+
+"""List OVM backups that exist, or are needed.
+
+   usage: ovmlist [-h] [--inactive] [--needs_backup] [--local] [--borg]
+                  [--sort SORT]
+
+   optional arguments:
+     -h, --help            show this help message and exit
+     --inactive, -i        show inactive backups
+     --needs_backup, -n    show VMs needing backup
+     --local, -l           do local backup
+     --borg, -b            do borg backup
+     --sort SORT, -s SORT  sort by VM name or age
+"""
+
+import argparse
+import sys
+import time
+
+import borg
+import config
+import work_queue
+import util
+
+
+
+
+# ----- GLOBAL DATA -----
+
+class globals:
+    pass
+
+g = globals()
+
+g.show_inactive = False
+g.show_needs_backup = 0
+g.sort_by = 'name'
+g.backup = []
+g.borg = False
+g.local = False
+g.now = time.mktime(time.localtime())
+
+
+# ----- FUNCTIONS -----
+
+
+
+def parse_commandline():
+    """Parse command line, and set option in global variables for later."""
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--inactive', '-i', action='store_true',
+                        help='show inactive backups')
+    parser.add_argument('--needs_backup', '-n', action='store_true',
+                        help='show VMs needing backup')
+    parser.add_argument('--local', '-l', action='store_true',
+                        help='do local backup')
+    parser.add_argument('--borg', '-b', action='store_true',
+                        help='do borg backup')
+    parser.add_argument('--sort', '-s', help='sort by VM name or age')
+
+    args = parser.parse_args()
+    if args.inactive:
+        g.show_inactive = True
+    if args.needs_backup:
+        g.show_needs_backup = 1
+    if args.local:
+        g.local = True
+    if args.borg:
+        g.borg = True
+    if args.sort:
+        if args.sort in ['name', 'age']:
+            g.sort_by = args.sort
+        else:
+            util.perror('Sort parameter invalid. Ignored.')
+
+    if g.borg and g.local:
+        util.perror('error: Both borg and local options given')
+        sys.exit(2)
+
+
+
+def print_vm_backups(sort_by):
+    """Print TSM backups in array g.backup[], properly sorted."""
+
+    if sort_by == 'name':
+        a = sorted(g.backup, key=lambda bk: (bk.owner, bk.disk))
+    else:
+        a = sorted(g.backup, key=lambda bk: bk.dt)
+
+    g.backup = a
+    prev_name = 'NOT-LIKELY'
+
+    print("  Owner          VM disk image                     DATE      TIME   A/I  AGE ")
+    print("---------- ------------------------------------ ---------- -------- --- -----")
+    for b in g.backup:
+        if b.disk == prev_name:
+            this_name = ''
+        else:
+            this_name = b.disk
+            prev_name = b.disk
+        print("{:10} {:36} {} {} {:3} {:5.1f}".format( \
+                b.owner, this_name, b.date, b.time, b.status, (g.now - b.dt) / 86400.0))
+
+
+
+def print_local_backups():
+    "Print list of local backups that exist."
+
+    cmd_status = util.run_shell_command('./list_local_backups.sh ' + \
+                                        config.cfg_local_dir)
+
+
+
+def print_needed_local_backups():
+    "Print list of needed local backups."
+
+    wq = work_queue.create_local_work_queue(g.now)
+    work_queue.print_local_work_queue(wq)
+
+
+
+def print_borg_backups():
+    "Print list of borg backups that exist."
+
+    backups = borg.get_backups(config.cfg_borg_repos, g.show_inactive)
+    if g.sort_by == 'name':
+        borg.print_backups(backups, sort='name')
+    else:
+        borg.print_backups(backups, sort='age')
+
+
+
+def print_needed_borg_backups():
+    "Print list of borg backups that are needed."
+    wq = borg.create_work_queue(config)
+    borg.print_work_queue(wq)
+
+
+
+def print_needed_backups():
+    "Print list of TSM backups that are needed."
+    wq = work_queue.create_tsm_work_queue(g.backup, g.now)
+    work_queue.print_tsm_work_queue(wq)
+
+
+
+def main():
+    config.read_config()
+    parse_commandline()
+
+    if not g.local and not g.borg and not config.cfg_tsm_enable:
+        util.perror('TSM disabled on this host')
+        sys.exit(1)
+    if g.local:
+        if g.show_needs_backup:
+            print_needed_local_backups()
+        else:
+            print_local_backups()
+    elif g.borg:
+        if g.show_needs_backup:
+            print_needed_borg_backups()
+        else:
+            print_borg_backups()
+    elif g.show_needs_backup:
+        util.get_tsm_backup_list(active_only=True)
+        g.backup = util.read_backup_list()
+        print_needed_backups()
+    else:
+        # This must be 'list all backups', possibly including inactive ones.
+        util.get_tsm_backup_list(active_only=(not g.show_inactive))
+        g.backup = util.read_backup_list()
+        print_vm_backups(g.sort_by)
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,9 @@
+strategy data/never-hit.txt
+rounds_played 8000000
+hands_played 40000000
+total_bet 80000000
+total_won 32695258
+total_lost 45290632
+dealer_bjs 379389
+player_bjs 1899189
+%win: -15.74
