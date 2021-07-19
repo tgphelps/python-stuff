@@ -151,6 +151,13 @@ class Game:
                         if self.verbose:
                             print(f'BUST: LOSE {h.bet_amount}')
                         self.st.total_lost += h.bet_amount
+                    elif h.surrendered:
+                        loss = h.bet_amount // 2
+                        log(f"SURRENDER: LOSE {loss}")
+                        if self.verbose:
+                            print(f'SURRENDER: LOSE {loss}')
+                        self.st.total_lost  += loss
+                        self.st.total_surrenders += 1 # XXX Assumes bet = 2 !
                     elif dbust:
                         log(f"WIN - dealer bust: {h.bet_amount}")
                         if self.verbose:
@@ -196,7 +203,8 @@ class Game:
             print("-" * 20, file=f)
             # This assertion assumes a BJ pays 3-2.
             assert self.st.total_won + self.st.total_lost + \
-                self.st.total_push - self.st.blackjacks_won == \
+                self.st.total_push - self.st.blackjacks_won + \
+                self.st.total_surrenders == \
                 self.st.total_bet
 
 
@@ -211,3 +219,4 @@ class Statistics():
         self.total_won = 0
         self.total_lost = 0
         self.total_push = 0
+        self.total_surrenders = 0

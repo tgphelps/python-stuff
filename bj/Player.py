@@ -66,8 +66,13 @@ class Player:
         self.splits_done = 0
 
     def maybe_surrender(self, hand: Hand, up_card: int) -> bool:
-        "We don't do this yet."
-        return False
+        "Surrender this hand if strategy says to do so."
+        key = (c.SURRENDER, hand.value, up_card)
+        if key in self.strategy:
+            hand.surrender()
+            return True
+        else:
+            return False
 
     def maybe_split(self, hand: Hand, up_card: int) -> bool:
         """Split this hand if it's a pair, and stategy dictates it.

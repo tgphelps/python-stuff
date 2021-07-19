@@ -15,6 +15,7 @@ class Hand:
         # XXX BUG: no_double is never set true or tested
         self.no_double = False  # True => Double not allowed
         self.obsolete = False  # Set true when a pair is split into new hands.
+        self.surrendered = False
 
         self.shoe = shoe
         self.bet_amount = bet_amount
@@ -83,3 +84,7 @@ class Hand:
                 self.harden()
             else:
                 self.busted = True
+
+    def surrender(self) -> None:
+        "Mark the hand as surrendered."
+        self.surrendered = True
