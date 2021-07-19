@@ -1,4 +1,4 @@
-#!/bin/env python3
+#!/usr/bin/env python
 
 """
 Read the stats.txt file, and suumarize its contents. If there are

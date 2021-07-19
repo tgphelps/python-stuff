@@ -1,4 +1,4 @@
-
+#!/usr/bin/env python
 """
 ddu.py: Deduplicating utility for backup/restore
 

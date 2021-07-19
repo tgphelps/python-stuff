@@ -1,5 +1,5 @@
 
-# Basic strategy, but no surrender.
+# Basic strategy
 
 hit hard 4,5,6,7,8,9,10,11 vs 2,3,4,5,6,7,8,9,10,11
 hit hard 12                vs 2,3,7,8,9,10,11
@@ -22,7 +22,10 @@ split 2,3 vs 2,3,4,5,6,7
 split 4   vs 5,6
 split 6   vs 2,3,4,5,6
 split 7   vs 2,3,4,5,6,7
-# WARNING: Change the following if surrender allowed
+# WARNING: Change the following if surrender allowed (true?)
 split 8   vs 2,3,4,5,6,7,8,9,10,11
 split 9   vs 2,3,4,5,6,8,9
 split 11  vs 2,3,4,5,6,7,8,9,10,11
+
+surrender 16 vs 9,10,11
+surrender 15 vs 10,11

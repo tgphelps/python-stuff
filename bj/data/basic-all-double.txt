@@ -1,5 +1,5 @@
 
-# Basic strategy, but no doubles, splits, or surrender.
+# Basic strategy, but no splits or surrender.
 
 hit hard 4,5,6,7,8,9,10,11 vs 2,3,4,5,6,7,8,9,10,11
 hit hard 12                vs 2,3,7,8,9,10,11
