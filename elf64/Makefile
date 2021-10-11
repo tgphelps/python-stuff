@@ -1,4 +1,4 @@
 
 check:
-	mypy *.py
 	flake8
+	mypy *.py

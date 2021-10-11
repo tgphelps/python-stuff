@@ -58,7 +58,7 @@ class Lexer():
                 List of tokens which should have token.type
                 set to the keyword itself, instead of a more
                 general type, like 'identifier'.
-                WARNING: Every keyword must be matches by some rule.
+                WARNING: Every keyword must be matched by some rule.
         """
         # All the regexes are concatenated into a single one
         # with named groups. Since the group names must be valid
