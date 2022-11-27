@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 
-def toprint(c):
+def toprint(c) -> int:
     "Return printable version of a character."
     if 0x20 <= c < 0x7f:
         return c
@@ -24,7 +24,7 @@ class Hexdump:
         else:
             self.no_offset = False
 
-    def dump(self, b):
+    def dump(self, b) -> str:
         "Return printable string representing 'bytes' object b."
         size = len(b)
         if self.no_offset:

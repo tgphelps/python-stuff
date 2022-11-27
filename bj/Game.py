@@ -74,7 +74,7 @@ class Game:
             if p.hands[0].blackjack:
                 log("player blackjack")
                 if self.verbose:
-                    print(f"Player BJ")
+                    print("Player BJ")
 
         self.dealer.get_hand()
         if self.dealer.hand.blackjack:
@@ -156,8 +156,8 @@ class Game:
                         log(f"SURRENDER: LOSE {loss}")
                         if self.verbose:
                             print(f'SURRENDER: LOSE {loss}')
-                        self.st.total_lost  += loss
-                        self.st.total_surrenders += 1 # XXX Assumes bet = 2 !
+                        self.st.total_lost += loss
+                        self.st.total_surrenders += 1  # XXX Assumes bet = 2 !
                     elif dbust:
                         log(f"WIN - dealer bust: {h.bet_amount}")
                         if self.verbose:

@@ -2,7 +2,7 @@
 
 """
 This reads a log file and verifies that all the 'action' entries are
-corrent. And action entry looks like:
+correct. An action entry looks like:
     act: key value up-card action
 """
 

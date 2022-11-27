@@ -19,6 +19,7 @@ Options:
 
 import sys
 import docopt  # type: ignore
+from typing import BinaryIO
 
 from dumper import Hexdump
 
@@ -51,7 +52,7 @@ g.entire_file = b''
 g.debug = False
 
 
-def main():
+def main() -> None:
     if not (sys.version_info.major == 3 and sys.version_info.minor >= 8):
         print("Python 3.8 or above is required.")
         sys.exit(1)
@@ -73,7 +74,7 @@ def main():
         process(f)
 
 
-def process(f):
+def process(f: BinaryIO) -> None:
     test_code(g.va_first)
     while True:
         cmd = read_command()
@@ -108,7 +109,7 @@ def process(f):
         # last_cmd = cmd
 
 
-def dump(fld, f):
+def dump(fld: list[str], f: BinaryIO) -> None:
     if len(fld) != 3:
         print('bad command:', fld)
     else:
@@ -128,7 +129,7 @@ def dump(fld, f):
             assert count >= 0
 
 
-def change_bytes(fld, f):
+def change_bytes(fld: list[str], f: BinaryIO) -> None:
     va = to_num(fld[1])
     offset = to_raw(va)
     if offset >= g.file_size:
@@ -147,7 +148,7 @@ def change_bytes(fld, f):
     f.flush()
 
 
-def search(fld, f):
+def search(fld: list[str], f: BinaryIO) -> None:
     "s offset b b b ..."
     if fld[0] == 'sa':
         s_all = True
@@ -188,7 +189,7 @@ def search(fld, f):
             break
 
 
-def read_bytes(bs):
+def read_bytes(bs: list[str]) -> list[int]:
     "convert a list of strings into a list of bytes."
     data = []
     for b in bs:
@@ -197,7 +198,7 @@ def read_bytes(bs):
     return data
 
 
-def read_command():
+def read_command() -> str:
     "Get next command. On EOF, retrun 'exit'."
     try:
         return input('cmd ->')
@@ -205,26 +206,26 @@ def read_command():
         return 'exit'
 
 
-def test_code(va):
+def test_code(va: int) -> None:
     assert to_va(to_raw(va)) == va
 
 
-def to_raw(va):
+def to_raw(va: int) -> int:
     "Convert a file address to a virtual address."
     return va - g.va_first + g.offset
 
 
-def to_va(raw):
+def to_va(raw: int) -> int:
     "Convert a virtual address to a file address."
     return raw + g.va_first - g.offset
 
 
-def file_size(f):
+def file_size(f: BinaryIO) -> int:
     f.seek(0, 2)
     return f.tell()
 
 
-def to_num(s):
+def to_num(s: str) -> int:
     "If s starts with 0, it's hex, otherwise it's decimal."
     if s.startswith('0'):
         return int(s, 16)
@@ -232,11 +233,11 @@ def to_num(s):
         return int(s)
 
 
-def invalidate_cache():
+def invalidate_cache() -> None:
     g.entire_file = b''
 
 
-def print_help():
+def print_help() -> None:
     print('d  va  count')
     print('cb va  hex-byte ...')
     print('s  va  hex-byte ...')

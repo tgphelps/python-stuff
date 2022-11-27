@@ -3,6 +3,7 @@
 # *** IMPORTS ***
 
 import argparse
+from typing import BinaryIO
 
 import dumper
 
@@ -20,7 +21,6 @@ class Globals:
     path: str
     offset: int
     length: int
-    pass
 
 
 g = Globals()
@@ -32,7 +32,7 @@ g.length = 0
 
 # *** FUNCTIONS ***
 
-def parse_arguments():
+def parse_arguments() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument('path', help='file to dump')
     parser.add_argument('--verbose', '-v', help='increase verbosity',
@@ -53,7 +53,7 @@ def parse_arguments():
         print('length =', g.length)
 
 
-def print_buff(buff, size, dump):
+def print_buff(buff: bytes, size: int, dump: dumper.Hexdump):
     """
     Print one buffer of the file, in lines of LINESIZE bytes
     """
@@ -66,7 +66,7 @@ def print_buff(buff, size, dump):
         assert size >= 0
 
 
-def dump_file(f):
+def dump_file(f: BinaryIO) -> None:
     """
     Dump the file starting at 'offset' for a length of 'length' bytes
     """
@@ -86,7 +86,7 @@ def dump_file(f):
             break
 
 
-def process_file():
+def process_file() -> None:
     try:
         f = open(g.path, 'rb')
     except IOError:
@@ -99,7 +99,7 @@ def process_file():
         f.close()
 
 
-def main():
+def main() -> None:
     parse_arguments()
     # parse_arguments() will not return if there is an error
     try:
