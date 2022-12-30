@@ -15,8 +15,6 @@ Options:
 
 # import docopt  # type:ignore
 
-from typing import Tuple
-
 from filter import filter
 
 VERSION = '0.0'
@@ -31,7 +29,7 @@ class myfilter(filter):
         # print('mylast')
         pass
 
-    def foreach(self, info: Tuple[str, int, str]) -> None:
+    def foreach(self, info: tuple[str, int, str]) -> None:
         print(info[2])
 
 

@@ -17,7 +17,7 @@ Options:
 from abc import ABC, abstractmethod
 import docopt  # type: ignore
 import sys
-from typing import Generator, Tuple
+from typing import Generator
 
 VERSION = '0.0'
 
@@ -56,12 +56,12 @@ class filter(ABC):
         pass
 
     @abstractmethod
-    def foreach(self, info: Tuple[str, int, str]) -> None:
+    def foreach(self, info: tuple[str, int, str]) -> None:
         """Code to process an input line. Must be overridden."""
         pass
 
     def next_line(self, rstrip=True) \
-            -> Generator[Tuple[str, int, str], None, None]:
+            -> Generator[tuple[str, int, str], None, None]:
         """Read lines from all files in a list, and yield each line.
 
         We return a tuple: (filename, relative-line-number, line)
@@ -89,7 +89,7 @@ class filter(ABC):
 
 
 class myfilter(filter):
-    def foreach(self, info: Tuple[str, int, str]) -> None:
+    def foreach(self, info: tuple[str, int, str]) -> None:
         print(info)
 
 

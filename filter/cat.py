@@ -13,15 +13,13 @@ Options:
 
 # import docopt  # type:ignore
 
-from typing import Tuple
-
 from filter import filter
 
 VERSION = '0.0'
 
 
 class myfilter(filter):
-    def foreach(self, info: Tuple[str, int, str]) -> None:
+    def foreach(self, info: tuple[str, int, str]) -> None:
         try:
             print(info[2])
         except BrokenPipeError:

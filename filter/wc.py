@@ -13,8 +13,6 @@ Options:
 
 # import docopt  # type:ignore
 
-from typing import Tuple
-
 from filter import filter
 
 VERSION = '0.0'
@@ -24,7 +22,7 @@ class myfilter(filter):
     def first(self):
         self.lines = 0
 
-    def foreach(self, info: Tuple[str, int, str]) -> None:
+    def foreach(self, info: tuple[str, int, str]) -> None:
         self.lines += 1
 
     def last(self):
